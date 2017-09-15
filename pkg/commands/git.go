@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Azure/acr-builder/execution/constants"
-	"github.com/Azure/acr-builder/execution/domain"
+	"github.com/Azure/acr-builder/pkg/constants"
+	"github.com/Azure/acr-builder/pkg/domain"
 	"github.com/sirupsen/logrus"
 )
 
@@ -219,7 +219,7 @@ func (s *GitXToken) toAuthAddress(runner domain.Runner, address domain.AbstractS
 func (s *GitXToken) Export() []domain.EnvVar {
 	return []domain.EnvVar{
 		domain.EnvVar{
-			Name: constants.GitAuthTypeVar,
+			Name:  constants.GitAuthTypeVar,
 			Value: *authTypeX,
 		},
 	}

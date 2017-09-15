@@ -18,7 +18,7 @@ func (r *envResolver) GetEnv(key string) (string, bool) {
 }
 
 func TestParse(t *testing.T) {
-	composeFile := path.Join("..", "test", "resources", "docker-compose", "docker-compose-envs.yml")
+	composeFile := path.Join("..", "..", "test", "resources", "docker-compose", "docker-compose-envs.yml")
 	err := os.Setenv("ACR_BUILD_DOCKER_REGISTRY", "unit-tests")
 	if err != nil {
 		panic(err)

@@ -7,7 +7,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/Azure/acr-builder/execution/domain"
+	"github.com/Azure/acr-builder/pkg/domain"
 	yaml "gopkg.in/yaml.v2"
 )
 

@@ -5,9 +5,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/Azure/acr-builder/execution/constants"
-	"github.com/Azure/acr-builder/execution/domain"
-	"github.com/Azure/acr-builder/gork"
+	"github.com/Azure/acr-builder/pkg/constants"
+	"github.com/Azure/acr-builder/pkg/domain"
+	"github.com/Azure/acr-builder/pkg/gork"
 )
 
 // Vocabulary to be used to build commands
