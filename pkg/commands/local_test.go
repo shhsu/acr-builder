@@ -34,7 +34,7 @@ func TestLocalSourceParamHappy(t *testing.T) {
 		},
 		getWdErr: &testCommon.NilError,
 		expectedEnv: []domain.EnvVar{
-			{Name: constants.ExportsCheckoutDir, Value: "proj"},
+			{Name: constants.ExportsWorkingDir, Value: "proj"},
 		}})
 }
 
@@ -44,7 +44,7 @@ func TestLocalSourceGetWdErr(t *testing.T) {
 		path:     "proj",
 		getWdErr: &getwdErr,
 		expectedEnv: []domain.EnvVar{
-			{Name: constants.ExportsCheckoutDir, Value: "proj"},
+			{Name: constants.ExportsWorkingDir, Value: "proj"},
 		},
 		expectedErr: "^Failed to get wd$",
 	})

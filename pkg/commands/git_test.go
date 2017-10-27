@@ -36,7 +36,12 @@ func TestMinimalParams(t *testing.T) {
 	testGitSource(t, gitSourceTestCase{
 		address: "https://github.com/org/address.git",
 		expectedFSAccess: make(test_domain.FileSystemExpectations, 0).
-			AssertIsDirEmpty(".", false, nil),
+			AssertIsDirEmpty(defaultTargetDir, false, nil),
+		getwdErr: &testCommon.NilError,
+		expectedChdir: []test_domain.ChdirExpectation{
+			{Path: defaultTargetDir},
+			{Path: gitSourceTestPwd},
+		},
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command: "git",
@@ -58,6 +63,7 @@ func TestMinimalParams(t *testing.T) {
 			},
 		},
 		expectedEnv: []domain.EnvVar{
+			{Name: constants.ExportsWorkingDir, Value: defaultTargetDir},
 			{Name: constants.ExportsGitSource, Value: "https://github.com/org/address.git"},
 		},
 	})
@@ -86,7 +92,7 @@ func TestXTokenFreshClone(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitAuthType, Value: "Git X Token"},
 			{Name: constants.ExportsGitSource, Value: "https://github.com/org/address.git"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
 		},
 	})
@@ -132,7 +138,7 @@ func TestPATokenRefreshSuccessButFailedToReturn(t *testing.T) {
 			{Name: constants.ExportsGitAuthType, Value: "Git Personal Access Token"},
 			{Name: constants.ExportsGitUser, Value: "user"},
 			{Name: constants.ExportsGitSource, Value: "https://github.com/org/address.git"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 			{Name: constants.ExportsGitHeadRev, Value: "git_head_rev"},
 		},
 		expectedReturnErr: "^Error switching back$",
@@ -144,15 +150,21 @@ func TestNoAuthHappyClone(t *testing.T) {
 		address: "test_address",
 		branch:  "git_branch",
 		expectedFSAccess: make(test_domain.FileSystemExpectations, 0).
-			AssertPwdEmpty(true, nil),
+			AssertIsDirEmpty(defaultTargetDir, true, nil),
+		getwdErr: &testCommon.NilError,
+		expectedChdir: []test_domain.ChdirExpectation{
+			{Path: defaultTargetDir},
+			{Path: gitSourceTestPwd},
+		},
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command:      "git",
-				Args:         []string{"clone", "-b", "git_branch", "test_address"},
+				Args:         []string{"clone", "-b", "git_branch", "test_address", defaultTargetDir},
 				IsObfuscated: true,
 			},
 		},
 		expectedEnv: []domain.EnvVar{
+			{Name: constants.ExportsWorkingDir, Value: defaultTargetDir},
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
 		},
@@ -164,7 +176,12 @@ func TestNoAuthHappyCheckout(t *testing.T) {
 		address: "test_address",
 		branch:  "git_branch",
 		expectedFSAccess: make(test_domain.FileSystemExpectations, 0).
-			AssertPwdEmpty(false, nil),
+			AssertIsDirEmpty(defaultTargetDir, false, nil),
+		getwdErr: &testCommon.NilError,
+		expectedChdir: []test_domain.ChdirExpectation{
+			{Path: defaultTargetDir},
+			{Path: gitSourceTestPwd},
+		},
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command: "git",
@@ -190,6 +207,7 @@ func TestNoAuthHappyCheckout(t *testing.T) {
 			},
 		},
 		expectedEnv: []domain.EnvVar{
+			{Name: constants.ExportsWorkingDir, Value: defaultTargetDir},
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
 		},
@@ -201,11 +219,15 @@ func TestNoAuthCloneWithHeadRevFailed(t *testing.T) {
 		address: "test_address",
 		headRev: "git_head_rev",
 		expectedFSAccess: make(test_domain.FileSystemExpectations, 0).
-			AssertPwdEmpty(true, nil),
+			AssertIsDirEmpty(defaultTargetDir, true, nil),
+		getwdErr: &testCommon.NilError,
+		expectedChdir: []test_domain.ChdirExpectation{
+			{Path: defaultTargetDir},
+		},
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command:      "git",
-				Args:         []string{"clone", "test_address"},
+				Args:         []string{"clone", "test_address", defaultTargetDir},
 				IsObfuscated: true,
 			},
 			{
@@ -215,6 +237,7 @@ func TestNoAuthCloneWithHeadRevFailed(t *testing.T) {
 			},
 		},
 		expectedEnv: []domain.EnvVar{
+			{Name: constants.ExportsWorkingDir, Value: defaultTargetDir},
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitHeadRev, Value: "git_head_rev"},
 		},
@@ -232,7 +255,7 @@ func TestNoAuthCloneFailedToFindTargetDir(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitHeadRev, Value: "git_head_rev"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^Error checking for source dir: target_dir, error: Some lstat error$",
 	})
@@ -248,7 +271,7 @@ func TestNoAuthCloneFailedToCheckTargetDirEmpty(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitHeadRev, Value: "git_head_rev"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^Error checking if source dir is empty: target_dir, error: some io error$",
 	})
@@ -278,7 +301,7 @@ func TestNoTokenChdirFailedAfterClone(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^failed to chdir$",
 	})
@@ -301,7 +324,7 @@ func TestNoTokenChdirFailedBeforeRefresh(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^failed to chdir$",
 	})
@@ -330,7 +353,7 @@ func TestNoTokenChdirFailedToClean(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^Failed to clean repository: failed to clean$",
 	})
@@ -368,7 +391,7 @@ func TestNoTokenChdirFailedToCheckout(t *testing.T) {
 		expectedEnv: []domain.EnvVar{
 			{Name: constants.ExportsGitSource, Value: "test_address"},
 			{Name: constants.ExportsGitBranch, Value: "git_branch"},
-			{Name: constants.ExportsCheckoutDir, Value: "target_dir"},
+			{Name: constants.ExportsWorkingDir, Value: "target_dir"},
 		},
 		expectedErr: "^Failed to clean fetch from remote: test_address, error: some network issue$",
 	})
@@ -503,12 +526,12 @@ func TestCloneCommandFailed(t *testing.T) {
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command:      "git",
-				Args:         []string{"clone", "-b", "git_branch", "git_address"},
+				Args:         []string{"clone", "-b", "git_branch", "git_address", defaultTargetDir},
 				IsObfuscated: true,
 				ErrorMsg:     "failed to clone",
 			},
 		},
-		expectedErr: "^Error cloning git source: git_address to directory <current directory>, error: failed to clone$",
+		expectedErr: fmt.Sprintf("^Error cloning git source: git_address to directory %s, error: failed to clone$", defaultTargetDir),
 	})
 }
 

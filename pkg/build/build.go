@@ -29,8 +29,10 @@ func NewBuilder(runner domain.Runner) *Builder {
 // Run is the main body of the acr-builder
 func (b *Builder) Run(buildNumber, composeFile, composeProjectDir,
 	dockerfile, dockerImage, dockerContextDir,
-	dockerUser, dockerPW, dockerRegistry, gitURL, gitCloneDir, gitBranch,
-	gitHeadRev, gitPATokenUser, gitPAToken, gitXToken, localSource string,
+	dockerUser, dockerPW, dockerRegistry,
+	workingDir,
+	gitURL, gitBranch, gitHeadRev, gitPATokenUser, gitPAToken, gitXToken,
+	webArchive string,
 	buildEnvs, buildArgs []string, push bool,
 ) (dependencies []domain.ImageDependencies, duration time.Duration, err error) {
 	startTime := time.Now()
@@ -51,8 +53,10 @@ func (b *Builder) Run(buildNumber, composeFile, composeProjectDir,
 	var request *domain.BuildRequest
 	request, err = b.createBuildRequest(composeFile, composeProjectDir,
 		dockerfile, dockerImage, dockerContextDir,
-		dockerUser, dockerPW, dockerRegistry, gitURL, gitCloneDir, gitBranch,
-		gitHeadRev, gitPATokenUser, gitPAToken, gitXToken, localSource,
+		dockerUser, dockerPW, dockerRegistry,
+		workingDir,
+		gitURL, gitBranch, gitHeadRev, gitPATokenUser, gitPAToken, gitXToken,
+		webArchive,
 		buildArgs, push)
 
 	if err != nil {
@@ -69,8 +73,10 @@ func (b *Builder) Run(buildNumber, composeFile, composeProjectDir,
 
 func (b *Builder) createBuildRequest(composeFile, composeProjectDir,
 	dockerfile, dockerImage, dockerContextDir,
-	dockerUser, dockerPW, dockerRegistry, gitURL, gitCloneDir, gitBranch,
-	gitHeadRev, gitPATokenUser, gitPAToken, gitXToken, localSource string,
+	dockerUser, dockerPW, dockerRegistry,
+	workingDir,
+	gitURL, gitBranch, gitHeadRev, gitPATokenUser, gitPAToken, gitXToken,
+	webArchive string,
 	buildArgs []string, push bool) (*domain.BuildRequest, error) {
 	if push && dockerRegistry == "" {
 		return nil, fmt.Errorf("Docker registry is needed for push, use --%s or environment variable %s to provide its value",
@@ -97,24 +103,9 @@ func (b *Builder) createBuildRequest(composeFile, composeProjectDir,
 		dockerCreds = append(dockerCreds, cred)
 	}
 
-	var source domain.SourceTarget
-	if gitURL != "" {
-		var gitCred commands.GitCredential
-		if gitXToken != "" {
-			gitCred = commands.NewGitXToken(gitXToken)
-		} else if gitPATokenUser != "" {
-			var err error
-			gitCred, err = commands.NewGitPersonalAccessToken(gitPATokenUser, gitPAToken)
-			if err != nil {
-				return nil, err
-			}
-		}
-		source.Source = commands.NewGitSource(gitURL, gitBranch, gitHeadRev, gitCloneDir, gitCred)
-	} else {
-		if gitXToken != "" || gitPATokenUser != "" || gitPAToken != "" {
-			return nil, fmt.Errorf("Git credentials are given but --%s was not", constants.ArgNameGitURL)
-		}
-		source.Source = commands.NewLocalSource(localSource)
+	source, err := getSource(workingDir, gitURL, gitBranch, gitHeadRev, gitXToken, gitPATokenUser, gitPAToken, webArchive)
+	if err != nil {
+		return nil, err
 	}
 
 	// The following code block tries to determine which kind of build task to include
@@ -147,12 +138,16 @@ func (b *Builder) createBuildRequest(composeFile, composeProjectDir,
 		}
 		build = commands.NewDockerComposeBuild(composeFile, composeProjectDir, buildArgs)
 	}
-	source.Builds = append(source.Builds, build)
 
 	return &domain.BuildRequest{
 		DockerRegistry:    registrySuffixed,
 		DockerCredentials: dockerCreds,
-		Targets:           []domain.SourceTarget{source},
+		Targets: []domain.SourceTarget{
+			{
+				Source: source,
+				Builds: []domain.BuildTarget{build},
+			},
+		},
 	}, nil
 }
 

@@ -1,0 +1,5 @@
+{
+    "archive_test": {
+        "url": "https://github.com/shhsu/acr-builder/raw/shhsu/tar/tests/resources/docker-compose/project.tar.gz"
+    }
+}

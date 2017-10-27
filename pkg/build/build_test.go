@@ -407,14 +407,14 @@ type createBuildRequestTestCase struct {
 	dockerUser        string
 	dockerPW          string
 	dockerRegistry    string
+	workingDir        string
 	gitURL            string
-	gitCloneDir       string
 	gitBranch         string
 	gitHeadRev        string
 	gitPATokenUser    string
 	gitPAToken        string
 	gitXToken         string
-	localSource       string
+	webArchive        string
 	buildArgs         []string
 	push              bool
 	files             test_domain.FileSystemExpectations
@@ -460,7 +460,7 @@ func TestCreateBuildRequestWithGitPATokenDockerfile(t *testing.T) {
 		gitURL:           gitAddress,
 		gitBranch:        branch,
 		gitHeadRev:       headRev,
-		gitCloneDir:      targetDir,
+		workingDir:       targetDir,
 		dockerfile:       dockerfile,
 		dockerContextDir: contextDir,
 		buildArgs:        buildArgs,
@@ -502,7 +502,7 @@ func TestCreateBuildRequestWithGitXTokenDockerCompose(t *testing.T) {
 		gitURL:            gitAddress,
 		gitBranch:         branch,
 		gitHeadRev:        headRev,
-		gitCloneDir:       targetDir,
+		workingDir:        targetDir,
 		composeFile:       composeFile,
 		composeProjectDir: composeProjectDir,
 		buildArgs:         buildArgs,
@@ -542,7 +542,8 @@ func TestCreateBuildRequestNoGitPassword(t *testing.T) {
 func TestCreateBuildRequestNoGitURL(t *testing.T) {
 	testCreateBuildRequest(t, createBuildRequestTestCase{
 		gitPATokenUser: "some.git.user",
-		expectedError:  fmt.Sprintf("^Git credentials are given but --%s was not$", constants.ArgNameGitURL),
+		expectedError: fmt.Sprintf("^Optional parameter %s is given for %s but none of the required parameters: \\[%s\\] were given$",
+			constants.ArgNameGitPATokenUser, constants.SourceNameGit, constants.ArgNameGitURL),
 	})
 }
 
@@ -581,10 +582,10 @@ func testCreateBuildRequest(t *testing.T, tc createBuildRequestTestCase) {
 	builder := NewBuilder(runner)
 	req, err := builder.createBuildRequest(tc.composeFile, tc.composeProjectDir,
 		tc.dockerfile, tc.dockerImage, tc.dockerContextDir,
-		tc.dockerUser, tc.dockerPW, tc.dockerRegistry,
-		tc.gitURL, tc.gitCloneDir, tc.gitBranch, tc.gitHeadRev,
+		tc.dockerUser, tc.dockerPW, tc.dockerRegistry, tc.workingDir,
+		tc.gitURL, tc.gitBranch, tc.gitHeadRev,
 		tc.gitPATokenUser, tc.gitPAToken, tc.gitXToken,
-		tc.localSource, tc.buildArgs, tc.push)
+		tc.webArchive, tc.buildArgs, tc.push)
 
 	if tc.expectedError != "" {
 		assert.NotNil(t, err)
@@ -605,14 +606,14 @@ type runTestCase struct {
 	dockerUser           string
 	dockerPW             string
 	dockerRegistry       string
+	workingDir           string
 	gitURL               string
-	gitCloneDir          string
 	gitBranch            string
 	gitHeadRev           string
 	gitPATokenUser       string
 	gitPAToken           string
 	gitXToken            string
-	localSource          string
+	webArchive           string
 	buildEnvs            []string
 	buildArgs            []string
 	push                 bool
@@ -625,7 +626,7 @@ func TestRunSimpleHappy(t *testing.T) {
 	testRun(t, runTestCase{
 		buildNumber:    "buildNum-0",
 		dockerRegistry: testCommon.TestsDockerRegistryName,
-		localSource:    filepath.Join("..", "..", "tests", "resources", "docker-compose"),
+		workingDir:     filepath.Join("..", "..", "tests", "resources", "docker-compose"),
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command: "docker-compose",
@@ -643,7 +644,7 @@ func TestRunNoRegistryGiven(t *testing.T) {
 	os.Clearenv()
 	testRun(t, runTestCase{
 		buildNumber: "buildNum-0",
-		localSource: filepath.Join("..", "..", "tests", "resources", "docker-compose"),
+		workingDir:  filepath.Join("..", "..", "tests", "resources", "docker-compose"),
 		expectedCommands: []test_domain.CommandsExpectation{
 			{
 				Command: "docker-compose",
@@ -662,7 +663,7 @@ func TestRunNoRegistryGivenPush(t *testing.T) {
 	testRun(t, runTestCase{
 		push:        true,
 		buildNumber: "buildNum-0",
-		localSource: filepath.Join("..", "..", "tests", "resources", "docker-compose"),
+		workingDir:  filepath.Join("..", "..", "tests", "resources", "docker-compose"),
 		expectedErr: fmt.Sprintf("^Docker registry is needed for push, use --%s or environment variable %s to provide its value$",
 			constants.ArgNameDockerRegistry, constants.ExportsDockerRegistry),
 	})
@@ -695,9 +696,9 @@ func testRun(t *testing.T, tc runTestCase) {
 	dependencies, duration, err := builder.Run(tc.buildNumber, tc.composeFile, tc.composeProjectDir,
 		tc.dockerfile, tc.dockerImage, tc.dockerContextDir,
 		tc.dockerUser, tc.dockerPW, tc.dockerRegistry,
-		tc.gitURL, tc.gitCloneDir, tc.gitBranch, tc.gitHeadRev,
+		tc.workingDir, tc.gitURL, tc.gitBranch, tc.gitHeadRev,
 		tc.gitPATokenUser, tc.gitPAToken, tc.gitXToken,
-		tc.localSource, tc.buildEnvs, tc.buildArgs, tc.push)
+		tc.webArchive, tc.buildEnvs, tc.buildArgs, tc.push)
 	actualDuration := time.Since(startTime)
 	assert.True(t, actualDuration >= duration)
 	assert.True(t, duration+time.Millisecond >= actualDuration)

@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const defaultTargetDir = "acr-build-source" // force targetDir to not be null so we never clone against .
+
 type gitSource struct {
 	address    string
 	branch     string
@@ -22,6 +24,9 @@ type gitSource struct {
 
 // NewGitSource create a SourceDescription that represents a git checkout
 func NewGitSource(address, branch, headRev, targetDir string, credential GitCredential) domain.BuildSource {
+	if targetDir == "" {
+		targetDir = defaultTargetDir
+	}
 	return &gitSource{
 		address:    address,
 		branch:     branch,
@@ -237,7 +242,7 @@ func (s *gitSource) Export() []domain.EnvVar {
 	}
 	if s.targetDir != "" {
 		exports = append(exports, domain.EnvVar{
-			Name:  constants.ExportsCheckoutDir,
+			Name:  constants.ExportsWorkingDir,
 			Value: s.targetDir,
 		})
 	}
